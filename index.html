@@ -8,10 +8,10 @@
   <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
 </head>
 <body>
-<div id="help">
-  <b>Drag & drop</b> a white-on-black PNG mask (e.g. logo) onto the window.<br/>
-  Tweak constants in the script: <b>SPEED</b>, <b>SCALE</b>, <b>GLOW_PX</b>, <b>PALETTE_MODE</b>.
-</div>
+
+
+<!-- Hidden file input for dat.GUI -->
+<input type="file" id="mask-upload" accept="image/*" style="display: none;">
 
 <script type="module" src="mask-gradient.js"></script>
 </body>
