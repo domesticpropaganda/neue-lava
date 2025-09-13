@@ -1,0 +1,22 @@
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto;
+}
+
+#help {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  color: #9aa;
+  line-height: 1.2;
+  font-size: 12px;
+  background: #000a;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+#help b {
+  color: #cfe;
+}
