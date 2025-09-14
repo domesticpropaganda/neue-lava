@@ -203,7 +203,7 @@ function setupMouseTracking() {
 function updateCameraRotation() {
     if (camera) {
         // Orbital rotation around the center point
-        const orbitRadius = 3; // Distance from center (same as initial camera.position.z)
+        const orbitRadius = 2.5; // Distance from center (same as initial camera.position.z)
         const rotationIntensity = 0.3; // Adjust this to control rotation range
         
         // Calculate target angles based on mouse position
@@ -336,7 +336,7 @@ scene.background = new THREE.Color(0x000000); // Back to black for final effect
 const canvasContainer = document.querySelector('.canvas-container');
 
 camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 3;
+camera.position.z = 2.5;
 
 const renderer = new THREE.WebGLRenderer();
 
@@ -614,7 +614,7 @@ if (typeof Pane === 'undefined') {
 }
 
 const pane = new Pane({
-    title: 'Controls',
+    title: 'Playground',
     expanded: true,
 });
 
@@ -643,23 +643,40 @@ visualFolder.addBinding(params, 'currentMask', {
     label: 'Current',
     readonly: true,
 });
-visualFolder.addButton({
-    title: '← Previous Shape',
-}).on('click', () => {
-    const newIndex = currentMaskIndex === 1 ? 5 : currentMaskIndex - 1;
+const navButton = visualFolder.addButton({
+    title: '← Prev | Next →',
+});
+
+// Add click position detection for left/right navigation
+navButton.element.addEventListener('click', (event) => {
+    const buttonElement = event.currentTarget.querySelector('.tp-btnv_b');
+    const rect = buttonElement.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const buttonWidth = rect.width;
+    const clickPosition = clickX / buttonWidth;
+    
+    // Left half = Previous, Right half = Next
+    let newIndex;
+    if (clickPosition < 0.5) {
+        // Previous (left half)
+        newIndex = currentMaskIndex === 1 ? 5 : currentMaskIndex - 1;
+    } else {
+        // Next (right half)
+        newIndex = currentMaskIndex === 5 ? 1 : currentMaskIndex + 1;
+    }
+    
     loadMaskByIndex(newIndex);
 });
 
-visualFolder.addButton({
-    title: 'Next Shape →',
-}).on('click', () => {
-    const newIndex = currentMaskIndex === 5 ? 1 : currentMaskIndex + 1;
-    loadMaskByIndex(newIndex);
+const uploadButton = visualFolder.addButton({
+    title: 'Upload',
 });
 
-visualFolder.addButton({
-    title: 'Upload Image',
-}).on('click', () => {
+// Add tooltip to upload button
+uploadButton.element.setAttribute('data-tooltip', 'Black&white images with solid black background work best.(JPG, PNG, max 10MB)');
+uploadButton.element.classList.add('has-tooltip');
+
+uploadButton.on('click', () => {
     document.getElementById('mask-upload').click();
 });
 
@@ -937,11 +954,11 @@ animationFolder.addBinding(params, 'noiseStrength', {
 // Take it with you folder (export controls)
 const exportFolder = pane.addFolder({
     title: 'Take it with you',
-    expanded: true,
+    expanded: false,
 });
 
 exportFolder.addButton({
-    title: 'Download snapshot',
+    title: 'Download',
 }).on('click', () => {
     exportImage();
 });
