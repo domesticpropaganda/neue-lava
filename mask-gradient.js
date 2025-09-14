@@ -12,6 +12,24 @@ function initializeApp() {
 
 function startApp() {
 
+// Preloader utility functions
+function showPreloader(message = 'Loading image...') {
+    const preloader = document.getElementById('preloader');
+    const preloaderText = document.querySelector('.preloader-text');
+    
+    if (preloader && preloaderText) {
+        preloaderText.textContent = message;
+        preloader.classList.remove('hidden');
+    }
+}
+
+function hidePreloader() {
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+        preloader.classList.add('hidden');
+    }
+}
+
 // File upload functionality
 let currentMaskTexture;
 let mesh, glowMesh; // Store mesh references for updating geometry
@@ -40,20 +58,27 @@ function setupFileUpload() {
     });
 
     function handleFile(file) {
+        // Show preloader immediately
+        showPreloader('Processing image...');
+        
         // Validate file type
         if (!file.type.startsWith('image/')) {
             console.error('Please select an image file');
+            hidePreloader();
             return;
         }
 
         // Validate file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
             console.error('File too large (max 10MB)');
+            hidePreloader();
             return;
         }
 
         const reader = new FileReader();
         reader.onload = (e) => {
+            showPreloader('Loading image...');
+            
             const img = new Image();
             img.onload = () => {
                 try {
@@ -79,17 +104,23 @@ function setupFileUpload() {
                     params.currentMask = `${file.name} (${img.width}x${img.height})`;
                     
                     console.log('Mask loaded successfully:', file.name, `${img.width}x${img.height}`, `AR: ${aspectRatio.toFixed(2)}`);
+                    
+                    // Hide preloader after successful loading
+                    hidePreloader();
                 } catch (error) {
                     console.error('Error creating texture:', error);
+                    hidePreloader();
                 }
             };
             img.onerror = () => {
                 console.error('Invalid image file');
+                hidePreloader();
             };
             img.src = e.target.result;
         };
         reader.onerror = () => {
             console.error('Failed to read file');
+            hidePreloader();
         };
         reader.readAsDataURL(file);
     }
@@ -235,6 +266,9 @@ function applyColorTheme(themeName) {
 
 // Function to load mask by index
 function loadMaskByIndex(index) {
+    // Show preloader
+    showPreloader(`Loading mask ${index}...`);
+    
     const maskPath = `images/mask-${index}.png`;
     const loader = new THREE.TextureLoader();
     
@@ -256,8 +290,19 @@ function loadMaskByIndex(index) {
         params.currentMask = `mask-${index}.png`;
         
         console.log(`Loaded mask-${index}.png`);
-    }, undefined, (error) => {
+        
+        // Hide preloader after successful loading
+        hidePreloader();
+    }, 
+    // Progress callback (optional)
+    (progress) => {
+        // Could show progress percentage here if needed
+        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+    }, 
+    // Error callback
+    (error) => {
         console.error(`Failed to load mask-${index}.png:`, error);
+        hidePreloader();
     });
 }
 

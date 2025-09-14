@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Thermal Mask Shader</title>
+  <title>Neue Lava™ - A color morph toy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,6 +30,14 @@
 
   <!-- Hidden file input for dat.GUI -->
   <input type="file" id="mask-upload" accept="image/*" style="display: none;">
+
+  <!-- Preloader overlay -->
+  <div id="preloader" class="preloader hidden">
+    <div class="preloader-content">
+      <div class="preloader-spinner"></div>
+      <div class="preloader-text">Loading image...</div>
+    </div>
+  </div>
 
   <script type="module" src="mask-gradient.js"></script>
 </body>
