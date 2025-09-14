@@ -663,6 +663,130 @@ visualFolder.addButton({
     document.getElementById('mask-upload').click();
 });
 
+// Export function
+function exportImage() {
+    showPreloader('Preparing export...');
+    
+    try {
+        // Store current renderer size
+        const currentSize = renderer.getSize(new THREE.Vector2());
+        
+        // Create temporary renderer for export at 1280x1280
+        const exportRenderer = new THREE.WebGLRenderer({ 
+            preserveDrawingBuffer: true,
+            antialias: true,
+            alpha: false
+        });
+        exportRenderer.setSize(1280, 1280);
+        exportRenderer.setClearColor(0x000000, 1); // Black background
+        
+        // Create temporary camera with correct aspect ratio (1:1 for square export)
+        const exportCamera = camera.clone();
+        exportCamera.aspect = 1.0; // Square aspect ratio
+        exportCamera.updateProjectionMatrix();
+        
+        // Render the scene
+        exportRenderer.render(scene, exportCamera);
+        
+        // Get the canvas data
+        const canvas = exportRenderer.domElement;
+        
+        // Create a new canvas for compositing with branding
+        const compositeCanvas = document.createElement('canvas');
+        compositeCanvas.width = 1280;
+        compositeCanvas.height = 1280;
+        const ctx = compositeCanvas.getContext('2d');
+        
+        // Draw the 3D render
+        ctx.drawImage(canvas, 0, 0);
+        
+        // Add branding
+        addBranding(ctx, 1280, 1280);
+        
+        // Convert to blob and download
+        compositeCanvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `neue-lava-${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Cleanup
+            exportRenderer.dispose();
+            hidePreloader();
+            
+            console.log('Image exported successfully');
+        }, 'image/png');
+        
+    } catch (error) {
+        console.error('Export failed:', error);
+        hidePreloader();
+    }
+}
+
+// Function to add branding to the exported image
+function addBranding(ctx, width, height) {
+    const padding = 40;
+    const fontSize = Math.floor(width * 0.018); // Responsive font size
+    const smallFontSize = Math.floor(fontSize * 0.7);
+    
+    // Main branding - top center
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = `${fontSize}px 'Space Mono', monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('NEUE—LAVA™', width / 2, padding + fontSize);
+    
+    // Subtitle - top center
+    ctx.font = `${smallFontSize}px 'Space Mono', monospace`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText('A color-flow toy', width / 2, padding + fontSize + smallFontSize + 5);
+    
+    // Color swatch - bottom center (above timestamp and copyright)
+    const swatchSize = Math.floor(width * 0.025);
+    const swatchPadding = Math.floor(width * 0.008);
+    const totalSwatchWidth = (5 * swatchSize) + (4 * swatchPadding);
+    const swatchStartX = (width - totalSwatchWidth) / 2;
+    const swatchY = height - padding - smallFontSize - 50; // Positioned above timestamp
+    
+    // Get current color palette
+    const colors = [
+        params.colorBlue,
+        params.colorCyan, 
+        params.colorYellow,
+        params.colorOrange,
+        params.colorRed
+    ];
+    
+    // Draw color swatch
+    colors.forEach((color, index) => {
+        const x = swatchStartX + (index * (swatchSize + swatchPadding));
+        ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+        ctx.fillRect(x, swatchY, swatchSize, swatchSize);
+        
+        // Add subtle border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, swatchY, swatchSize, swatchSize);
+    });
+    
+    // Timestamp - bottom center (above copyright)
+    const timestamp = new Date().toISOString().split('T')[0];
+    ctx.font = `${Math.floor(smallFontSize * 0.8)}px 'Space Mono', monospace`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.textAlign = 'center';
+    ctx.fillText(timestamp, width / 2, height - padding - smallFontSize - 5);
+    
+    // Copyright - bottom center
+    ctx.font = `${smallFontSize}px 'Space Mono', monospace`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText('©2025 STUDIØE', width / 2, height - padding);
+}
+
 
 // Colors folder
 colorsFolder.addBinding(params, 'colorTheme', {
@@ -809,6 +933,19 @@ animationFolder.addBinding(params, 'noiseStrength', {
     max: 0.5,
     step: 0.01,
 });
+
+// Take it with you folder (export controls)
+const exportFolder = pane.addFolder({
+    title: 'Take it with you',
+    expanded: true,
+});
+
+exportFolder.addButton({
+    title: 'Download snapshot',
+}).on('click', () => {
+    exportImage();
+});
+
 // Helper function to get blend mode constant
 function getBlendMode(blendModeString) {
     switch(blendModeString) {
