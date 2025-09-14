@@ -1,6 +1,6 @@
-import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.154.0/examples/jsm/controls/OrbitControls.js?module';
-import { Pane } from 'https://cdn.skypack.dev/tweakpane@4.0.3';
+import * as THREE from './node_modules/three/build/three.module.js';
+import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
+import { Pane } from './node_modules/tweakpane/dist/tweakpane.js';
 
 // Wait for modules to be available
 function initializeApp() {

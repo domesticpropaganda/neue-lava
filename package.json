@@ -1,0 +1,39 @@
+{
+  "name": "thermal-mask-shader",
+  "version": "1.0.0",
+  "description": "An interactive thermal color stream with WebGL shaders using Three.js",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . --port 3000",
+    "serve": "npx serve .",
+    "preview": "npx serve . --port 8080"
+  },
+  "keywords": [
+    "threejs",
+    "webgl",
+    "shaders",
+    "thermal",
+    "interactive",
+    "art",
+    "visualization"
+  ],
+  "author": "STUDIØE",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.154.0",
+    "tweakpane": "^4.0.3"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/domesticpropaganda/thermal.git"
+  },
+  "homepage": "https://domesticpropaganda.github.io/thermal"
+}
