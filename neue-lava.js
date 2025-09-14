@@ -1029,29 +1029,29 @@ updateFlowConstraints();
 
 // Animation folder
 animationFolder.addBinding(params, 'morphSpeed', {
-    label: 'Morph Speed',
+    label: 'Speed',
     min: 0.1,
     max: 5.0,
 });
 
 animationFolder.addBinding(params, 'gradientScale', {
-    label: 'Gradient Scale',
+    label: 'Gradients',
     min: 0.1,
     max: 3.0,
 });
 
 animationFolder.addBinding(params, 'noiseStrength', {
-    label: 'Noise Strength',
+    label: 'Noise',
     min: 0.0,
     max: 0.5,
     step: 0.01,
 });
 
 animationFolder.addBinding(params, 'noiseType', {
-    label: 'Type',
+    label: 'Density',
     options: {
-        'Lava': 'Simplex',
-        'Smoke': 'fBm'
+        'Thick': 'Simplex',
+        'Thin': 'fBm'
     }
 });
 
