@@ -1,9 +1,77 @@
 body {
   margin: 0;
-  height: 100%;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
   background: #000;
   overflow: hidden;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto;
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(.7rem, 2vw, 13px);
+  text-transform: uppercase;
+  box-sizing: border-box;
+}
+
+.container {
+  padding: 5vmin;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  margin-bottom: 2vh;
+  flex-shrink: 0;
+}
+
+.header-left {
+  color: #9aa;
+}
+
+.header-right {
+  color: #9aa;
+  position: absolute;
+  right: 0;
+}
+
+.header-center {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Canvas container */
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  margin-top: 2vh;
+  flex-shrink: 0;
+}
+
+.footer-left {
+  color: #9aa;
+}
+
+.footer-right {
+  color: #9aa;
 }
 
 #help {
@@ -19,4 +87,71 @@ body {
 }
 #help b {
   color: #cfe;
+}
+
+/* Tweakpane Custom Styling */
+.tp-dfwv {
+  font-family: 'Space Mono', monospace !important;
+  text-transform: uppercase !important;
+  font-size: clamp(.6rem, 1.5vw, 11px) !important;
+  /* Position in bottom-right within 5% margin */
+  position: fixed !important;
+  bottom: 5vmin !important;
+  right: 5vmin !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+.tp-rotv {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  border: 1px solid #333 !important;
+}
+
+.tp-lblv_l {
+  color: #9aa !important;
+  font-family: 'Space Mono', monospace !important;
+  text-transform: uppercase !important;
+  font-size: clamp(.6rem, 1.5vw, 11px) !important;
+}
+
+.tp-btnv_b {
+  background-color: #222 !important;
+  border: 1px solid #444 !important;
+  color: #9aa !important;
+  font-family: 'Space Mono', monospace !important;
+  text-transform: uppercase !important;
+  font-size: clamp(.6rem, 1.5vw, 10px) !important;
+}
+
+.tp-btnv_b:hover {
+  background-color: #333 !important;
+  border-color: #666 !important;
+}
+
+.tp-tabv_t {
+  background-color: #111 !important;
+  border-bottom: 1px solid #333 !important;
+  color: #9aa !important;
+  font-family: 'Space Mono', monospace !important;
+  text-transform: uppercase !important;
+  font-size: clamp(.6rem, 1.5vw, 10px) !important;
+}
+
+.tp-tabv_t.tp-tabv_t-sel {
+  background-color: #222 !important;
+  color: #fff !important;
+}
+
+.tp-coltxtv_t {
+  font-family: 'Space Mono', monospace !important;
+  font-size: clamp(.6rem, 1.5vw, 10px) !important;
+}
+
+.tp-sldv_t {
+  background-color: #222 !important;
+  border: 1px solid #444 !important;
+}
+
+.tp-sldv_k {
+  background-color: #666 !important;
 }

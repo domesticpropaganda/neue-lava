@@ -4,15 +4,33 @@
   <meta charset="utf-8" />
   <title>Thermal Mask Shader</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
 </head>
 <body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-center">Neue—Lava™</div>
+      <div class="header-right">An interactive color stream</div>
+    </header>
 
+    <!-- Canvas container -->
+    <div class="canvas-container">
+      <!-- Three.js canvas will be inserted here -->
+    </div>
 
-<!-- Hidden file input for dat.GUI -->
-<input type="file" id="mask-upload" accept="image/*" style="display: none;">
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-left">©2025 <a href="https://oygarerdal.com" style="text-decoration:none; color:#727272">STUDIØE</a></div>
+    </footer>
+  </div>
 
-<script type="module" src="mask-gradient.js"></script>
+  <!-- Hidden file input for dat.GUI -->
+  <input type="file" id="mask-upload" accept="image/*" style="display: none;">
+
+  <script type="module" src="mask-gradient.js"></script>
 </body>
 </html>

@@ -1,5 +1,16 @@
 import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
 import { OrbitControls } from 'https://unpkg.com/three@0.154.0/examples/jsm/controls/OrbitControls.js?module';
+import { Pane } from 'https://cdn.skypack.dev/tweakpane@4.0.3';
+
+// Wait for modules to be available
+function initializeApp() {
+    console.log('Modules loaded successfully');
+    
+    // Start the main application
+    startApp();
+}
+
+function startApp() {
 
 // File upload functionality
 let currentMaskTexture;
@@ -133,15 +144,27 @@ function updateMeshAspectRatio(aspectRatio) {
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000); // Back to black for final effect
 
+// Get canvas container dimensions - use setTimeout to ensure DOM is ready
+const canvasContainer = document.querySelector('.canvas-container');
+
 camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+
+// Append to the canvas container
+canvasContainer.appendChild(renderer.domElement);
+
+// Set initial size after a brief delay to ensure layout is complete
+setTimeout(() => {
+    const containerRect = canvasContainer.getBoundingClientRect();
+    camera.aspect = containerRect.width / containerRect.height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(containerRect.width, containerRect.height);
+}, 10);
 
 // Load default mask texture
-const maskTexture = new THREE.TextureLoader().load('images/cubemask.png');
+const maskTexture = new THREE.TextureLoader().load('images/mask-1.png');
 maskTexture.minFilter = THREE.LinearFilter;
 maskTexture.magFilter = THREE.LinearFilter;
 maskTexture.generateMipmaps = false; // Disable mipmaps for better edge quality
@@ -150,6 +173,93 @@ maskTexture.wrapT = THREE.ClampToEdgeWrapping;
 
 // Set initial current mask texture
 currentMaskTexture = maskTexture;
+
+// Track current mask index (1-5 for mask-1.png to mask-5.png)
+let currentMaskIndex = 1;
+
+// Color themes based on the provided images
+const colorThemes = {
+    'Original': {
+        colorBlue: [0, 0, 105],
+        colorCyan: [0, 60, 255],
+        colorYellow: [0, 255, 255],
+        colorOrange: [255, 225, 0],
+        colorRed: [245, 60, 35]
+    },
+      'Muted': {
+        colorBlue: [16, 17, 30],
+        colorCyan: [61, 73, 110],
+        colorYellow: [77, 223, 235],
+        colorOrange: [255, 225, 0],
+        colorRed: [245, 60, 35]
+    },
+    'Cool': {
+        colorBlue: [25, 25, 25],
+        colorCyan: [71, 71, 73],
+        colorYellow: [215, 240, 187],
+        colorOrange: [0, 180, 255],
+        colorRed: [35, 245, 220]
+    },
+    'Warm': {
+        colorBlue: [30, 17, 2],
+        colorCyan: [255, 255, 255],
+        colorYellow: [217, 230, 173],
+        colorOrange: [255, 225, 0],
+        colorRed: [245, 60, 35]
+    }
+  
+};
+
+// Function to apply color theme
+function applyColorTheme(themeName) {
+    const theme = colorThemes[themeName];
+    if (!theme) return;
+    
+    // Update params - Tweakpane expects {r, g, b} format for colors
+    params.colorBlue = {r: theme.colorBlue[0], g: theme.colorBlue[1], b: theme.colorBlue[2]};
+    params.colorCyan = {r: theme.colorCyan[0], g: theme.colorCyan[1], b: theme.colorCyan[2]};
+    params.colorYellow = {r: theme.colorYellow[0], g: theme.colorYellow[1], b: theme.colorYellow[2]};
+    params.colorOrange = {r: theme.colorOrange[0], g: theme.colorOrange[1], b: theme.colorOrange[2]};
+    params.colorRed = {r: theme.colorRed[0], g: theme.colorRed[1], b: theme.colorRed[2]};
+    params.colorBlue2 = {r: theme.colorBlue[0], g: theme.colorBlue[1], b: theme.colorBlue[2]}; // Keep colorBlue2 synced with colorBlue
+    
+    // Update GUI controllers to reflect the new values
+    if (window.guiControllers) {
+        window.guiControllers.colorBlue.refresh();
+        window.guiControllers.colorCyan.refresh();
+        window.guiControllers.colorYellow.refresh();
+        window.guiControllers.colorOrange.refresh();
+        window.guiControllers.colorRed.refresh();
+    }
+}
+
+// Function to load mask by index
+function loadMaskByIndex(index) {
+    const maskPath = `images/mask-${index}.png`;
+    const loader = new THREE.TextureLoader();
+    
+    loader.load(maskPath, (texture) => {
+        // Set texture properties
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.generateMipmaps = false;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        
+        // Update the mask texture
+        updateMaskTexture(texture);
+        
+        // Update current mask index
+        currentMaskIndex = index;
+        
+        // Update params for GUI display
+        params.currentMask = `mask-${index}.png`;
+        
+        console.log(`Loaded mask-${index}.png`);
+    }, undefined, (error) => {
+        console.error(`Failed to load mask-${index}.png:`, error);
+    });
+}
 
 const params = {
     redStart: 0.0,
@@ -167,12 +277,12 @@ const params = {
     morphSpeed: 0.8,
     bandPosition: 0.5,
     gradientScale: 1.0,
-    colorBlue: [0, 0, 105],
-    colorBlue2: [0, 0, 105],
-    colorCyan: [0, 60, 255],
-    colorYellow: [0, 255, 255],
-    colorOrange: [255, 225, 0],
-    colorRed: [245, 60, 35],
+    colorBlue: {r: 0, g: 0, b: 105},
+    colorBlue2: {r: 0, g: 0, b: 105},
+    colorCyan: {r: 0, g: 60, b: 255},
+    colorYellow: {r: 0, g: 255, b: 255},
+    colorOrange: {r: 255, g: 225, b: 0},
+    colorRed: {r: 245, g: 60, b: 35},
     cyanTransition: 0.42,
     yellowTransition: 0.81,
     orangeTransition: 0.85,
@@ -180,39 +290,176 @@ const params = {
     noiseStrength: 0.1,
     glowNoise: 0.3,
     gradientSpeed: 0.05,
+    // Color theme selection
+    colorTheme: 'Original',
     // Mask upload parameters
-    currentMask: 'cubemask.png (default)',
+    currentMask: 'mask-1.png',
     uploadMask: function() {
         document.getElementById('mask-upload').click();
+    },
+    // Mask navigation parameters
+    previousMask: function() {
+        const newIndex = currentMaskIndex === 1 ? 5 : currentMaskIndex - 1;
+        loadMaskByIndex(newIndex);
+    },
+    nextMask: function() {
+        const newIndex = currentMaskIndex === 5 ? 1 : currentMaskIndex + 1;
+        loadMaskByIndex(newIndex);
     }
 };
 
 // Move GUI creation after material initialization
-const gui = new dat.GUI();
+// Check if Tweakpane is loaded
+if (typeof Pane === 'undefined') {
+    console.error('Tweakpane Pane is not loaded. Please check the import.');
+    return;
+}
 
-// Mask folder
-const maskFolder = gui.addFolder('Mask');
-maskFolder.add(params, 'uploadMask').name('Upload Image');
-maskFolder.add(params, 'currentMask').name('Current').listen();
-maskFolder.open();
-
-gui.add(params, 'morphSpeed', 0.1, 5.0).name('Morph Speed');
-gui.add(params, 'gradientScale', 0.1, 3.0).name('Gradient Scale');
-gui.addColor(params, 'colorBlue').name('Color 1').onChange(function(value) {
-    // Update colorBlue2 to match colorBlue when it changes
-    params.colorBlue2 = [...value];
+const pane = new Pane({
+    title: 'Controls',
+    expanded: true,
 });
-gui.addColor(params, 'colorCyan').name('Color 2');
-gui.addColor(params, 'colorYellow').name('Color 3');
-gui.addColor(params, 'colorOrange').name('Color 4');
-gui.addColor(params, 'colorRed').name('Color 5');
-gui.add(params, 'blueStart', 0.0, 1.0, 0.01).name('Color 1 Start');
-gui.add(params, 'cyanTransition', 0.0, 1.0, 0.01).name('Clr 1→Clr 2');
-gui.add(params, 'yellowTransition', 0.0, 1.0, 0.01).name('Clr 2→Clr 3');
-gui.add(params, 'orangeTransition', 0.0, 1.0, 0.01).name('Clr 3→Clr 4');
-gui.add(params, 'redEnd', 0.0, 0.9, 0.01).name('Clr 4→Clr 5');
-gui.add(params, 'noiseStrength', 0.0, 0.5, 0.01).name('Noise Strength');
-gui.add(params, 'glowNoise', 0.0, 0.5, 0.01).name('Glow Noise');
+
+// Create tabs using folders instead of tab pages
+const visualFolder = pane.addFolder({
+    title: 'Visual',
+    expanded: true,
+});
+
+const animationFolder = pane.addFolder({
+    title: 'Animation',
+});
+
+const colorsFolder = pane.addFolder({
+    title: 'Colors',
+});
+
+const flowsFolder = pane.addFolder({
+    title: 'Flows',
+});
+
+// Visual folder (mask controls)
+visualFolder.addButton({
+    title: 'Upload Image',
+}).on('click', () => {
+    document.getElementById('mask-upload').click();
+});
+visualFolder.addBinding(params, 'currentMask', {
+    label: 'Current',
+    readonly: true,
+});
+visualFolder.addButton({
+    title: '← Previous Shape',
+}).on('click', () => {
+    const newIndex = currentMaskIndex === 1 ? 5 : currentMaskIndex - 1;
+    loadMaskByIndex(newIndex);
+});
+
+visualFolder.addButton({
+    title: 'Next Shape →',
+}).on('click', () => {
+    const newIndex = currentMaskIndex === 5 ? 1 : currentMaskIndex + 1;
+    loadMaskByIndex(newIndex);
+});
+
+
+
+// Animation folder
+animationFolder.addBinding(params, 'morphSpeed', {
+    label: 'Morph Speed',
+    min: 0.1,
+    max: 5.0,
+});
+
+animationFolder.addBinding(params, 'gradientScale', {
+    label: 'Gradient Scale',
+    min: 0.1,
+    max: 3.0,
+});
+
+animationFolder.addBinding(params, 'noiseStrength', {
+    label: 'Noise Strength',
+    min: 0.0,
+    max: 0.5,
+    step: 0.01,
+});
+
+// Colors folder
+colorsFolder.addBinding(params, 'colorTheme', {
+    label: 'Color Theme',
+    options: Object.keys(colorThemes).reduce((acc, key) => {
+        acc[key] = key;
+        return acc;
+    }, {})
+}).on('change', (ev) => {
+    applyColorTheme(ev.value);
+});
+
+// Store controller references for updating
+window.guiControllers = {};
+window.guiControllers.colorBlue = colorsFolder.addBinding(params, 'colorBlue', {
+    label: 'Color 1',
+    color: {type: 'int'},
+}).on('change', () => {
+    // Update colorBlue2 to match colorBlue when it changes
+    params.colorBlue2 = {r: params.colorBlue.r, g: params.colorBlue.g, b: params.colorBlue.b};
+});
+
+window.guiControllers.colorCyan = colorsFolder.addBinding(params, 'colorCyan', {
+    label: 'Color 2',
+    color: {type: 'int'},
+});
+
+window.guiControllers.colorYellow = colorsFolder.addBinding(params, 'colorYellow', {
+    label: 'Color 3',
+    color: {type: 'int'},
+});
+
+window.guiControllers.colorOrange = colorsFolder.addBinding(params, 'colorOrange', {
+    label: 'Color 4',
+    color: {type: 'int'},
+});
+
+window.guiControllers.colorRed = colorsFolder.addBinding(params, 'colorRed', {
+    label: 'Color 5',
+    color: {type: 'int'},
+});
+
+// Flows folder
+flowsFolder.addBinding(params, 'blueStart', {
+    label: 'Color 1 Start',
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+});
+
+flowsFolder.addBinding(params, 'cyanTransition', {
+    label: 'Clr 1→Clr 2',
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+});
+
+flowsFolder.addBinding(params, 'yellowTransition', {
+    label: 'Clr 2→Clr 3',
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+});
+
+flowsFolder.addBinding(params, 'orangeTransition', {
+    label: 'Clr 3→Clr 4',
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+});
+
+flowsFolder.addBinding(params, 'redEnd', {
+    label: 'Clr 4→Clr 5',
+    min: 0.0,
+    max: 0.9,
+    step: 0.01,
+});
 
 // Helper function to get blend mode constant
 function getBlendMode(blendModeString) {
@@ -604,12 +851,12 @@ const material = new THREE.ShaderMaterial({
         bandPosition: { value: params.bandPosition },
         gradientScale: { value: params.gradientScale },
         maskTex: { value: currentMaskTexture },
-        colorBlue: { value: new THREE.Color(params.colorBlue[0]/255, params.colorBlue[1]/255, params.colorBlue[2]/255) },
-        colorCyan: { value: new THREE.Color(params.colorCyan[0]/255, params.colorCyan[1]/255, params.colorCyan[2]/255) },
-        colorYellow: { value: new THREE.Color(params.colorYellow[0]/255, params.colorYellow[1]/255, params.colorYellow[2]/255) },
-        colorOrange: { value: new THREE.Color(params.colorOrange[0]/255, params.colorOrange[1]/255, params.colorOrange[2]/255) },
-        colorRed: { value: new THREE.Color(params.colorRed[0]/255, params.colorRed[1]/255, params.colorRed[2]/255) },
-        colorBlue2: { value: new THREE.Color(params.colorBlue2[0]/255, params.colorBlue2[1]/255, params.colorBlue2[2]/255) },
+        colorBlue: { value: new THREE.Color(params.colorBlue.r/255, params.colorBlue.g/255, params.colorBlue.b/255) },
+        colorCyan: { value: new THREE.Color(params.colorCyan.r/255, params.colorCyan.g/255, params.colorCyan.b/255) },
+        colorYellow: { value: new THREE.Color(params.colorYellow.r/255, params.colorYellow.g/255, params.colorYellow.b/255) },
+        colorOrange: { value: new THREE.Color(params.colorOrange.r/255, params.colorOrange.g/255, params.colorOrange.b/255) },
+        colorRed: { value: new THREE.Color(params.colorRed.r/255, params.colorRed.g/255, params.colorRed.b/255) },
+        colorBlue2: { value: new THREE.Color(params.colorBlue2.r/255, params.colorBlue2.g/255, params.colorBlue2.b/255) },
         blueStart: { value: params.blueStart },
         cyanTransition: { value: params.cyanTransition },
         yellowTransition: { value: params.yellowTransition },
@@ -643,11 +890,11 @@ const glowMaterial = new THREE.ShaderMaterial({
         glowNoise: { value: params.glowNoise },
         gradientSpeed: { value: params.gradientSpeed },
         // Thermal gradient uniforms
-        colorBlue: { value: new THREE.Color(params.colorBlue[0]/255, params.colorBlue[1]/255, params.colorBlue[2]/255) },
-        colorCyan: { value: new THREE.Color(params.colorCyan[0]/255, params.colorCyan[1]/255, params.colorCyan[2]/255) },
-        colorYellow: { value: new THREE.Color(params.colorYellow[0]/255, params.colorYellow[1]/255, params.colorYellow[2]/255) },
-        colorOrange: { value: new THREE.Color(params.colorOrange[0]/255, params.colorOrange[1]/255, params.colorOrange[2]/255) },
-        colorRed: { value: new THREE.Color(params.colorRed[0]/255, params.colorRed[1]/255, params.colorRed[2]/255) },
+        colorBlue: { value: new THREE.Color(params.colorBlue.r/255, params.colorBlue.g/255, params.colorBlue.b/255) },
+        colorCyan: { value: new THREE.Color(params.colorCyan.r/255, params.colorCyan.g/255, params.colorCyan.b/255) },
+        colorYellow: { value: new THREE.Color(params.colorYellow.r/255, params.colorYellow.g/255, params.colorYellow.b/255) },
+        colorOrange: { value: new THREE.Color(params.colorOrange.r/255, params.colorOrange.g/255, params.colorOrange.b/255) },
+        colorRed: { value: new THREE.Color(params.colorRed.r/255, params.colorRed.g/255, params.colorRed.b/255) },
         blueStart: { value: params.blueStart },
         cyanTransition: { value: params.cyanTransition },
         yellowTransition: { value: params.yellowTransition },
@@ -705,11 +952,11 @@ function animate() {
     glowMaterial.uniforms.gradientSpeed.value = params.gradientSpeed;
     
     // Update glow thermal colors (sync with main material)
-    glowMaterial.uniforms.colorBlue.value.setRGB(params.colorBlue[0]/255, params.colorBlue[1]/255, params.colorBlue[2]/255);
-    glowMaterial.uniforms.colorCyan.value.setRGB(params.colorCyan[0]/255, params.colorCyan[1]/255, params.colorCyan[2]/255);
-    glowMaterial.uniforms.colorYellow.value.setRGB(params.colorYellow[0]/255, params.colorYellow[1]/255, params.colorYellow[2]/255);
-    glowMaterial.uniforms.colorOrange.value.setRGB(params.colorOrange[0]/255, params.colorOrange[1]/255, params.colorOrange[2]/255);
-    glowMaterial.uniforms.colorRed.value.setRGB(params.colorRed[0]/255, params.colorRed[1]/255, params.colorRed[2]/255);
+    glowMaterial.uniforms.colorBlue.value.setRGB(params.colorBlue.r/255, params.colorBlue.g/255, params.colorBlue.b/255);
+    glowMaterial.uniforms.colorCyan.value.setRGB(params.colorCyan.r/255, params.colorCyan.g/255, params.colorCyan.b/255);
+    glowMaterial.uniforms.colorYellow.value.setRGB(params.colorYellow.r/255, params.colorYellow.g/255, params.colorYellow.b/255);
+    glowMaterial.uniforms.colorOrange.value.setRGB(params.colorOrange.r/255, params.colorOrange.g/255, params.colorOrange.b/255);
+    glowMaterial.uniforms.colorRed.value.setRGB(params.colorRed.r/255, params.colorRed.g/255, params.colorRed.b/255);
     glowMaterial.uniforms.blueStart.value = params.blueStart;
     glowMaterial.uniforms.cyanTransition.value = params.cyanTransition;
     glowMaterial.uniforms.yellowTransition.value = params.yellowTransition;
@@ -737,12 +984,12 @@ function animate() {
     material.uniforms.orangeTransition.value = stops[3];
     material.uniforms.redEnd.value = stops[4];
     material.uniforms.blueEnd2.value = stops[5];
-    material.uniforms.colorBlue.value.setRGB(params.colorBlue[0]/255, params.colorBlue[1]/255, params.colorBlue[2]/255);
-    material.uniforms.colorCyan.value.setRGB(params.colorCyan[0]/255, params.colorCyan[1]/255, params.colorCyan[2]/255);
-    material.uniforms.colorYellow.value.setRGB(params.colorYellow[0]/255, params.colorYellow[1]/255, params.colorYellow[2]/255);
-    material.uniforms.colorOrange.value.setRGB(params.colorOrange[0]/255, params.colorOrange[1]/255, params.colorOrange[2]/255);
-    material.uniforms.colorRed.value.setRGB(params.colorRed[0]/255, params.colorRed[1]/255, params.colorRed[2]/255);
-    material.uniforms.colorBlue2.value.setRGB(params.colorBlue2[0]/255, params.colorBlue2[1]/255, params.colorBlue2[2]/255);
+    material.uniforms.colorBlue.value.setRGB(params.colorBlue.r/255, params.colorBlue.g/255, params.colorBlue.b/255);
+    material.uniforms.colorCyan.value.setRGB(params.colorCyan.r/255, params.colorCyan.g/255, params.colorCyan.b/255);
+    material.uniforms.colorYellow.value.setRGB(params.colorYellow.r/255, params.colorYellow.g/255, params.colorYellow.b/255);
+    material.uniforms.colorOrange.value.setRGB(params.colorOrange.r/255, params.colorOrange.g/255, params.colorOrange.b/255);
+    material.uniforms.colorRed.value.setRGB(params.colorRed.r/255, params.colorRed.g/255, params.colorRed.b/255);
+    material.uniforms.colorBlue2.value.setRGB(params.colorBlue2.r/255, params.colorBlue2.g/255, params.colorBlue2.b/255);
         material.uniforms.noiseStrength.value = params.noiseStrength;
         // ...existing code...
     material.uniforms.gradientSpeed.value = params.gradientSpeed;
@@ -752,3 +999,34 @@ animate();
 
 // Initialize file upload functionality
 setupFileUpload();
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    const canvasContainer = document.querySelector('.canvas-container');
+    const containerRect = canvasContainer.getBoundingClientRect();
+    
+    camera.aspect = containerRect.width / containerRect.height;
+    camera.updateProjectionMatrix();
+    
+    renderer.setSize(containerRect.width, containerRect.height);
+});
+
+// Initial resize to ensure proper sizing
+window.addEventListener('load', () => {
+    const canvasContainer = document.querySelector('.canvas-container');
+    const containerRect = canvasContainer.getBoundingClientRect();
+    
+    camera.aspect = containerRect.width / containerRect.height;
+    camera.updateProjectionMatrix();
+    
+    renderer.setSize(containerRect.width, containerRect.height);
+});
+
+} // End of startApp function
+
+// Initialize the app when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
