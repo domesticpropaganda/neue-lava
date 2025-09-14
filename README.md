@@ -1,6 +1,6 @@
 # Thermal Mask Shader
 
-An interactive thermal color stream visualization using WebGL shaders and Three.js. This project creates dynamic thermal-style gradients that can be masked with custom images.
+An interactive color stream visualization using WebGL shaders and Three.js. This project creates dynamic fluid gradients that can be masked with custom images.
 
 ## Features
 
