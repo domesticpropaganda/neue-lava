@@ -1,5 +1,4 @@
 import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.154.0/examples/jsm/controls/OrbitControls.js?module';
 import { Pane } from 'https://cdn.skypack.dev/tweakpane@4.0.3';
 
 // Wait for modules to be available
@@ -44,7 +43,8 @@ function hidePreloader() {
 // File upload functionality
 let currentMaskTexture;
 let mesh, glowMesh; // Store mesh references for updating geometry
-let camera, controls; // Store camera and controls references
+let camera; // Store camera reference
+let mouse = { x: 0, y: 0 }; // Mouse position for camera rotation
 
 function setupFileUpload() {
     const fileInput = document.getElementById('mask-upload');
@@ -134,6 +134,52 @@ function setupFileUpload() {
             hidePreloader();
         };
         reader.readAsDataURL(file);
+    }
+}
+
+function setupMouseTracking() {
+    // Track mouse position for subtle camera rotation
+    window.addEventListener('mousemove', (event) => {
+        // Normalize mouse coordinates to [-1, 1] range
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    });
+}
+
+function updateCameraRotation() {
+    if (camera) {
+        // Orbital rotation around the center point
+        const orbitRadius = 3; // Distance from center (same as initial camera.position.z)
+        const rotationIntensity = 0.3; // Adjust this to control rotation range
+        
+        // Calculate target angles based on mouse position
+        const targetAzimuth = mouse.x * rotationIntensity; // Horizontal rotation
+        const targetElevation = mouse.y * rotationIntensity * 0.5; // Vertical rotation (reduced)
+        
+        // Smooth interpolation for organic feel
+        const lerpFactor = 0.05;
+        
+        // Current spherical coordinates
+        const currentRadius = Math.sqrt(
+            camera.position.x * camera.position.x + 
+            camera.position.y * camera.position.y + 
+            camera.position.z * camera.position.z
+        );
+        
+        const currentAzimuth = Math.atan2(camera.position.x, camera.position.z);
+        const currentElevation = Math.asin(camera.position.y / currentRadius);
+        
+        // Interpolate to target angles
+        const newAzimuth = currentAzimuth + (targetAzimuth - currentAzimuth) * lerpFactor;
+        const newElevation = currentElevation + (targetElevation - currentElevation) * lerpFactor;
+        
+        // Convert back to Cartesian coordinates
+        camera.position.x = orbitRadius * Math.sin(newAzimuth) * Math.cos(newElevation);
+        camera.position.y = orbitRadius * Math.sin(newElevation);
+        camera.position.z = orbitRadius * Math.cos(newAzimuth) * Math.cos(newElevation);
+        
+        // Always look at the center
+        camera.lookAt(0, 0, 0);
     }
 }
 
@@ -396,10 +442,6 @@ const visualFolder = pane.addFolder({
     expanded: true,
 });
 
-const animationFolder = pane.addFolder({
-    title: 'Animation',
-});
-
 const colorsFolder = pane.addFolder({
     title: 'Colors',
 });
@@ -407,7 +449,9 @@ const colorsFolder = pane.addFolder({
 const flowsFolder = pane.addFolder({
     title: 'Flows',
 });
-
+const animationFolder = pane.addFolder({
+    title: 'Animation',
+});
 // Visual folder (mask controls)
 visualFolder.addButton({
     title: 'Upload Image',
@@ -433,26 +477,6 @@ visualFolder.addButton({
 });
 
 
-
-// Animation folder
-animationFolder.addBinding(params, 'morphSpeed', {
-    label: 'Morph Speed',
-    min: 0.1,
-    max: 5.0,
-});
-
-animationFolder.addBinding(params, 'gradientScale', {
-    label: 'Gradient Scale',
-    min: 0.1,
-    max: 3.0,
-});
-
-animationFolder.addBinding(params, 'noiseStrength', {
-    label: 'Noise Strength',
-    min: 0.0,
-    max: 0.5,
-    step: 0.01,
-});
 
 // Colors folder
 colorsFolder.addBinding(params, 'colorTheme', {
@@ -531,6 +555,26 @@ flowsFolder.addBinding(params, 'redEnd', {
     step: 0.01,
 });
 
+
+// Animation folder
+animationFolder.addBinding(params, 'morphSpeed', {
+    label: 'Morph Speed',
+    min: 0.1,
+    max: 5.0,
+});
+
+animationFolder.addBinding(params, 'gradientScale', {
+    label: 'Gradient Scale',
+    min: 0.1,
+    max: 3.0,
+});
+
+animationFolder.addBinding(params, 'noiseStrength', {
+    label: 'Noise Strength',
+    min: 0.0,
+    max: 0.5,
+    step: 0.01,
+});
 // Helper function to get blend mode constant
 function getBlendMode(blendModeString) {
     switch(blendModeString) {
@@ -987,19 +1031,15 @@ glowMesh.position.z = 0.01; // IN FRONT of the main mesh
 scene.add(glowMesh); // Add glow behind first
 scene.add(mesh); // Add main mesh on top
 
-controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.screenSpacePanning = false;
-controls.minDistance = 2;
-controls.maxDistance = 20;
-
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 scene.add(ambientLight);
 
 function animate() {
     requestAnimationFrame(animate);
     const time = performance.now() * 0.001;
+    
+    // Update camera rotation based on mouse position
+    updateCameraRotation();
     
     material.uniforms.time.value = time;
     material.uniforms.morphSpeed.value = params.morphSpeed;
@@ -1069,6 +1109,9 @@ animate();
 
 // Initialize file upload functionality
 setupFileUpload();
+
+// Initialize mouse tracking
+setupMouseTracking();
 
 // Handle window resize
 window.addEventListener('resize', () => {
