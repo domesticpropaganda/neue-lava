@@ -14,6 +14,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 # Allow one concurrent deployment
 concurrency:
@@ -47,6 +48,9 @@ jobs:
           cp -r node_modules deploy/
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # Enable pages for this repository if not already enabled
+          enablement: true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
