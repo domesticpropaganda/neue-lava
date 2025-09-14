@@ -43,7 +43,7 @@ jobs:
           mkdir -p deploy
           cp index.html deploy/
           cp style.css deploy/
-          cp mask-gradient.js deploy/
+          cp neue-lava.js deploy/
           cp -r images deploy/
           cp -r node_modules deploy/
       - name: Setup Pages
