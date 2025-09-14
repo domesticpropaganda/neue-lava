@@ -11,32 +11,63 @@ function initializeApp() {
 
 function startApp() {
 
-// Preloader utility functions
+// Preloader utility functions with improved error handling
+let preloaderState = {
+    isVisible: false,
+    timeoutId: null,
+    forceHideTimeoutId: null
+};
+
 function showPreloader(message = 'Loading...') {
     const preloader = document.getElementById('preloader');
     const preloaderText = document.querySelector('.preloader-text');
     
     if (preloader && preloaderText) {
+        // Clear any existing timeouts
+        if (preloaderState.timeoutId) {
+            clearTimeout(preloaderState.timeoutId);
+        }
+        if (preloaderState.forceHideTimeoutId) {
+            clearTimeout(preloaderState.forceHideTimeoutId);
+        }
+        
         preloaderText.textContent = message;
         preloader.classList.remove('hidden');
+        preloader.style.opacity = '1';
+        preloaderState.isVisible = true;
         
-        // Add a small delay to ensure smooth animation
-        requestAnimationFrame(() => {
-            preloader.style.opacity = '1';
-        });
+        // Force hide after 10 seconds as failsafe
+        preloaderState.forceHideTimeoutId = setTimeout(() => {
+            console.warn('Preloader force-hidden after timeout');
+            hidePreloader();
+        }, 10000);
+        
+        console.log('Preloader shown:', message);
     }
 }
 
 function hidePreloader() {
     const preloader = document.getElementById('preloader');
-    if (preloader) {
-        // Fade out smoothly
+    if (preloader && preloaderState.isVisible) {
+        // Clear any existing timeouts
+        if (preloaderState.timeoutId) {
+            clearTimeout(preloaderState.timeoutId);
+        }
+        if (preloaderState.forceHideTimeoutId) {
+            clearTimeout(preloaderState.forceHideTimeoutId);
+        }
+        
+        // Immediate hide for better UX
         preloader.style.opacity = '0';
         
-        // Wait for animation to complete before hiding
-        setTimeout(() => {
+        // Set timeout for adding hidden class
+        preloaderState.timeoutId = setTimeout(() => {
             preloader.classList.add('hidden');
+            preloaderState.isVisible = false;
+            console.log('Preloader hidden');
         }, 300);
+        
+        preloaderState.isVisible = false;
     }
 }
 
@@ -87,11 +118,27 @@ function setupFileUpload() {
         }
 
         const reader = new FileReader();
+        
+        // Add timeout for file reading
+        const readTimeout = setTimeout(() => {
+            console.error('File reading timed out');
+            hidePreloader();
+        }, 5000);
+        
         reader.onload = (e) => {
+            clearTimeout(readTimeout);
             showPreloader('Loading image...');
             
             const img = new Image();
+            
+            // Add timeout for image loading
+            const imgTimeout = setTimeout(() => {
+                console.error('Image loading timed out');
+                hidePreloader();
+            }, 5000);
+            
             img.onload = () => {
+                clearTimeout(imgTimeout);
                 try {
                     // Calculate aspect ratio
                     const aspectRatio = img.width / img.height;
@@ -119,20 +166,27 @@ function setupFileUpload() {
                     // Hide preloader after successful loading
                     hidePreloader();
                 } catch (error) {
+                    clearTimeout(imgTimeout);
                     console.error('Error creating texture:', error);
                     hidePreloader();
                 }
             };
+            
             img.onerror = () => {
+                clearTimeout(imgTimeout);
                 console.error('Invalid image file');
                 hidePreloader();
             };
+            
             img.src = e.target.result;
         };
+        
         reader.onerror = () => {
+            clearTimeout(readTimeout);
             console.error('Failed to read file');
             hidePreloader();
         };
+        
         reader.readAsDataURL(file);
     }
 }
@@ -253,9 +307,17 @@ setTimeout(() => {
 
 // Load default mask texture
 showPreloader('Loading default mask...');
+
+// Add timeout for default mask loading
+const defaultMaskTimeout = setTimeout(() => {
+    console.error('Timeout loading default mask');
+    hidePreloader();
+}, 5000);
+
 const maskTexture = new THREE.TextureLoader().load('images/mask-1.png', 
     // onLoad callback
     (texture) => {
+        clearTimeout(defaultMaskTimeout);
         hidePreloader();
         console.log('Default mask loaded successfully');
     },
@@ -263,6 +325,7 @@ const maskTexture = new THREE.TextureLoader().load('images/mask-1.png',
     undefined,
     // onError callback
     (error) => {
+        clearTimeout(defaultMaskTimeout);
         console.error('Failed to load default mask:', error);
         hidePreloader();
     }
@@ -343,35 +406,52 @@ function loadMaskByIndex(index) {
     const maskPath = `images/mask-${index}.png`;
     const loader = new THREE.TextureLoader();
     
-    loader.load(maskPath, (texture) => {
-        // Set texture properties
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.generateMipmaps = false;
-        texture.wrapS = THREE.ClampToEdgeWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        
-        // Update the mask texture
-        updateMaskTexture(texture);
-        
-        // Update current mask index
-        currentMaskIndex = index;
-        
-        // Update params for GUI display
-        params.currentMask = `mask-${index}.png`;
-        
-        console.log(`Loaded mask-${index}.png`);
-        
-        // Hide preloader after successful loading
+    // Add timeout for mask loading
+    const loadTimeout = setTimeout(() => {
+        console.error(`Timeout loading mask-${index}.png`);
         hidePreloader();
+    }, 5000);
+    
+    loader.load(maskPath, (texture) => {
+        clearTimeout(loadTimeout);
+        try {
+            // Set texture properties
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.generateMipmaps = false;
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
+            
+            // Update the mask texture
+            updateMaskTexture(texture);
+            
+            // Update current mask index
+            currentMaskIndex = index;
+            
+            // Update params for GUI display
+            params.currentMask = `mask-${index}.png`;
+            
+            console.log(`Loaded mask-${index}.png`);
+            
+            // Hide preloader after successful loading
+            hidePreloader();
+        } catch (error) {
+            clearTimeout(loadTimeout);
+            console.error(`Error processing mask-${index}.png:`, error);
+            hidePreloader();
+        }
     }, 
     // Progress callback (optional)
     (progress) => {
         // Could show progress percentage here if needed
-        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+        if (progress.total > 0) {
+            const percentage = Math.round((progress.loaded / progress.total) * 100);
+            console.log(`Loading mask-${index}.png: ${percentage}%`);
+        }
     }, 
     // Error callback
     (error) => {
+        clearTimeout(loadTimeout);
         console.error(`Failed to load mask-${index}.png:`, error);
         hidePreloader();
     });
