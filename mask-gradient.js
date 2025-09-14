@@ -630,9 +630,9 @@ const params = {
     greenEnd: 0.75,
     blueStart: 0.05,
     blueEnd: 1.0,
-    glowIntensity: 1.4,
+    glowIntensity: 1.0,
     glowSpread: 0.2,
-    glowFalloff: 0.4,
+    glowFalloff: 0.5,
     glowBlendMode: 'Additive',
     morphSpeed: 0.8,
     bandPosition: 0.5,
@@ -822,7 +822,7 @@ function addBranding(ctx, width, height) {
     ctx.font = `${smallFontSize}px 'Space Mono', monospace`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.textAlign = 'center';
-    ctx.fillText('A color-flow toy', width / 2, padding + fontSize + smallFontSize + 5);
+    ctx.fillText('A COLOR-FLOW TOY', width / 2, padding + fontSize + smallFontSize + 5);
     
     // Color swatch - bottom center (above timestamp and copyright)
     const swatchSize = Math.floor(width * 0.025);
@@ -852,13 +852,7 @@ function addBranding(ctx, width, height) {
         ctx.strokeRect(x, swatchY, swatchSize, swatchSize);
     });
     
-    // Timestamp - bottom center (above copyright)
-    const timestamp = new Date().toISOString().split('T')[0];
-    ctx.font = `${Math.floor(smallFontSize * 0.8)}px 'Space Mono', monospace`;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.textAlign = 'center';
-    ctx.fillText(timestamp, width / 2, height - padding - smallFontSize - 5);
-    
+
     // Copyright - bottom center
     ctx.font = `${smallFontSize}px 'Space Mono', monospace`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
