@@ -269,18 +269,64 @@ function updateMeshAspectRatio(aspectRatio) {
     const newGeometry = new THREE.PlaneGeometry(width, height, 1, 1);
     const newGlowGeometry = new THREE.PlaneGeometry(width, height, 1, 1);
     
-    // Update mesh geometries
-    if (mesh) {
-        mesh.geometry.dispose(); // Clean up old geometry
+    // Update mesh geometries with proper cleanup
+    if (mesh && mesh.geometry) {
+        const oldGeometry = mesh.geometry;
         mesh.geometry = newGeometry;
+        oldGeometry.dispose(); // Clean up old geometry after assignment
     }
     
-    if (glowMesh) {
-        glowMesh.geometry.dispose(); // Clean up old geometry
+    if (glowMesh && glowMesh.geometry) {
+        const oldGlowGeometry = glowMesh.geometry;
         glowMesh.geometry = newGlowGeometry;
+        oldGlowGeometry.dispose(); // Clean up old geometry after assignment
     }
     
     console.log(`Updated mesh aspect ratio: ${aspectRatio.toFixed(2)} (${width.toFixed(2)} x ${height.toFixed(2)})`);
+}
+
+// Helper function to get aspect ratio from image URL
+function getImageAspectRatio(imageUrl) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const aspectRatio = img.width / img.height;
+            resolve(aspectRatio);
+        };
+        img.onerror = () => {
+            reject(new Error(`Failed to load image: ${imageUrl}`));
+        };
+        img.src = imageUrl;
+    });
+}
+
+// Function to create meshes with proper aspect ratio
+function createMeshesWithAspectRatio(aspectRatio = 1.0) {
+    // Calculate dimensions
+    const maxSize = 3;
+    let width, height;
+    
+    if (aspectRatio >= 1) {
+        width = maxSize;
+        height = maxSize / aspectRatio;
+    } else {
+        height = maxSize;
+        width = maxSize * aspectRatio;
+    }
+    
+    // Create geometries
+    const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
+    const glowGeometry = new THREE.PlaneGeometry(width, height, 1, 1);
+    
+    // Create meshes
+    mesh = new THREE.Mesh(geometry, material);
+    glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+    glowMesh.position.z = 0.01; // IN FRONT of the main mesh
+    
+    scene.add(glowMesh);
+    scene.add(mesh);
+    
+    console.log(`Created meshes with aspect ratio: ${aspectRatio.toFixed(2)} (${width.toFixed(2)} x ${height.toFixed(2)})`);
 }
 
 const scene = new THREE.Scene();
@@ -289,7 +335,7 @@ scene.background = new THREE.Color(0x000000); // Back to black for final effect
 // Get canvas container dimensions - use setTimeout to ensure DOM is ready
 const canvasContainer = document.querySelector('.canvas-container');
 
-camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer();
@@ -318,6 +364,41 @@ const maskTexture = new THREE.TextureLoader().load('images/mask-1.png',
     // onLoad callback
     (texture) => {
         clearTimeout(defaultMaskTimeout);
+        
+        try {
+            // Calculate aspect ratio from the loaded texture
+            const image = texture.image;
+            if (image && image.width && image.height) {
+                const aspectRatio = image.width / image.height;
+                
+                // Create meshes with correct aspect ratio (only if they don't exist yet)
+                if (!mesh || !glowMesh) {
+                    createMeshesWithAspectRatio(aspectRatio);
+                } else {
+                    // Update existing meshes
+                    updateMeshAspectRatio(aspectRatio);
+                }
+                
+                console.log(`Default mask dimensions: ${image.width}x${image.height}, AR: ${aspectRatio.toFixed(2)}`);
+            } else {
+                // Fallback to square aspect ratio
+                console.warn('Could not determine default mask dimensions, using square aspect ratio');
+                if (!mesh || !glowMesh) {
+                    createMeshesWithAspectRatio(1.0);
+                } else {
+                    updateMeshAspectRatio(1.0);
+                }
+            }
+        } catch (error) {
+            console.error('Error processing default mask aspect ratio:', error);
+            // Use square as fallback
+            if (!mesh || !glowMesh) {
+                createMeshesWithAspectRatio(1.0);
+            } else {
+                updateMeshAspectRatio(1.0);
+            }
+        }
+        
         hidePreloader();
         console.log('Default mask loaded successfully');
     },
@@ -328,6 +409,12 @@ const maskTexture = new THREE.TextureLoader().load('images/mask-1.png',
         clearTimeout(defaultMaskTimeout);
         console.error('Failed to load default mask:', error);
         hidePreloader();
+        // Use square as fallback if default fails
+        if (!mesh || !glowMesh) {
+            createMeshesWithAspectRatio(1.0);
+        } else {
+            updateMeshAspectRatio(1.0);
+        }
     }
 );
 maskTexture.minFilter = THREE.LinearFilter;
@@ -421,6 +508,21 @@ function loadMaskByIndex(index) {
             texture.generateMipmaps = false;
             texture.wrapS = THREE.ClampToEdgeWrapping;
             texture.wrapT = THREE.ClampToEdgeWrapping;
+            
+            // Calculate aspect ratio from the loaded texture
+            const image = texture.image;
+            if (image && image.width && image.height) {
+                const aspectRatio = image.width / image.height;
+                
+                // Update mesh aspect ratio with the correct ratio
+                updateMeshAspectRatio(aspectRatio);
+                
+                console.log(`Mask ${index} dimensions: ${image.width}x${image.height}, AR: ${aspectRatio.toFixed(2)}`);
+            } else {
+                // Fallback to square aspect ratio if image dimensions unavailable
+                console.warn(`Could not determine dimensions for mask ${index}, using square aspect ratio`);
+                updateMeshAspectRatio(1.0);
+            }
             
             // Update the mask texture
             updateMaskTexture(texture);
@@ -518,26 +620,25 @@ const pane = new Pane({
 
 // Create tabs using folders instead of tab pages
 const visualFolder = pane.addFolder({
-    title: 'Visual',
+    title: 'Change the visual',
     expanded: true,
 });
 
 const colorsFolder = pane.addFolder({
-    title: 'Colors',
+    title: 'Pick colors',
+    expanded: true,
 });
 
 const flowsFolder = pane.addFolder({
-    title: 'Flows',
+    title: 'Shape the flows',
+    expanded: false,
 });
 const animationFolder = pane.addFolder({
-    title: 'Animation',
+    title: 'Adjust the stream',
+    expanded: false,
 });
 // Visual folder (mask controls)
-visualFolder.addButton({
-    title: 'Upload Image',
-}).on('click', () => {
-    document.getElementById('mask-upload').click();
-});
+
 visualFolder.addBinding(params, 'currentMask', {
     label: 'Current',
     readonly: true,
@@ -556,11 +657,16 @@ visualFolder.addButton({
     loadMaskByIndex(newIndex);
 });
 
+visualFolder.addButton({
+    title: 'Upload Image',
+}).on('click', () => {
+    document.getElementById('mask-upload').click();
+});
 
 
 // Colors folder
 colorsFolder.addBinding(params, 'colorTheme', {
-    label: 'Color Theme',
+    label: 'Themes',
     options: Object.keys(colorThemes).reduce((acc, key) => {
         acc[key] = key;
         return acc;
@@ -599,41 +705,89 @@ window.guiControllers.colorRed = colorsFolder.addBinding(params, 'colorRed', {
     color: {type: 'int'},
 });
 
+// Store flow controller references
+window.flowControllers = {};
+
 // Flows folder
-flowsFolder.addBinding(params, 'blueStart', {
+window.flowControllers.blueStart = flowsFolder.addBinding(params, 'blueStart', {
     label: 'Color 1 Start',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
-flowsFolder.addBinding(params, 'cyanTransition', {
+window.flowControllers.cyanTransition = flowsFolder.addBinding(params, 'cyanTransition', {
     label: 'Clr 1→Clr 2',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
-flowsFolder.addBinding(params, 'yellowTransition', {
+window.flowControllers.yellowTransition = flowsFolder.addBinding(params, 'yellowTransition', {
     label: 'Clr 2→Clr 3',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
-flowsFolder.addBinding(params, 'orangeTransition', {
+window.flowControllers.orangeTransition = flowsFolder.addBinding(params, 'orangeTransition', {
     label: 'Clr 3→Clr 4',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
-flowsFolder.addBinding(params, 'redEnd', {
+window.flowControllers.redEnd = flowsFolder.addBinding(params, 'redEnd', {
     label: 'Clr 4→Clr 5',
     min: 0.0,
     max: 0.9,
     step: 0.01,
 });
+
+// Function to update flow constraints
+function updateFlowConstraints() {
+    const controllers = window.flowControllers;
+    const minGap = 0.01; // Minimum gap between values
+    
+    // Update min values based on previous slider
+    controllers.cyanTransition.min = params.blueStart + minGap;
+    controllers.yellowTransition.min = params.cyanTransition + minGap;
+    controllers.orangeTransition.min = params.yellowTransition + minGap;
+    controllers.redEnd.min = params.orangeTransition + minGap;
+    
+    // Update max values based on next slider
+    controllers.blueStart.max = Math.max(0, params.cyanTransition - minGap);
+    controllers.cyanTransition.max = Math.max(params.blueStart + minGap, params.yellowTransition - minGap);
+    controllers.yellowTransition.max = Math.max(params.cyanTransition + minGap, params.orangeTransition - minGap);
+    controllers.orangeTransition.max = Math.min(Math.max(params.yellowTransition + minGap, params.redEnd - minGap), 0.9);
+    
+    // Clamp values to ensure they stay within the progression
+    if (params.blueStart >= params.cyanTransition) {
+        params.blueStart = Math.max(0, params.cyanTransition - minGap);
+    }
+    if (params.cyanTransition >= params.yellowTransition) {
+        params.cyanTransition = Math.max(params.blueStart + minGap, params.yellowTransition - minGap);
+    }
+    if (params.yellowTransition >= params.orangeTransition) {
+        params.yellowTransition = Math.max(params.cyanTransition + minGap, params.orangeTransition - minGap);
+    }
+    if (params.orangeTransition >= params.redEnd) {
+        params.orangeTransition = Math.max(params.yellowTransition + minGap, Math.min(params.redEnd - minGap, 0.9));
+    }
+    
+    // Refresh all controllers to show updated constraints and values
+    Object.values(controllers).forEach(controller => controller.refresh());
+}
+
+// Add event listeners to update constraints when values change
+window.flowControllers.blueStart.on('change', updateFlowConstraints);
+window.flowControllers.cyanTransition.on('change', updateFlowConstraints);
+window.flowControllers.yellowTransition.on('change', updateFlowConstraints);
+window.flowControllers.orangeTransition.on('change', updateFlowConstraints);
+window.flowControllers.redEnd.on('change', updateFlowConstraints);
+
+// Initialize constraints
+updateFlowConstraints();
 
 
 // Animation folder
@@ -1100,16 +1254,7 @@ const glowMaterial = new THREE.ShaderMaterial({
     blending: getBlendMode(params.glowBlendMode) // Use dynamic blend mode
 });
 
-const geometry = new THREE.PlaneGeometry(3, 3, 1, 1);
-mesh = new THREE.Mesh(geometry, material);
-
-// Create glow mesh (same size, in front)
-const glowGeometry = new THREE.PlaneGeometry(3, 3, 1, 1);
-glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
-glowMesh.position.z = 0.01; // IN FRONT of the main mesh
-
-scene.add(glowMesh); // Add glow behind first
-scene.add(mesh); // Add main mesh on top
+// Meshes will be created after default mask loads to ensure correct aspect ratio
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 scene.add(ambientLight);
@@ -1120,6 +1265,11 @@ function animate() {
     
     // Update camera rotation based on mouse position
     updateCameraRotation();
+    
+    // Only proceed with rendering if meshes are created
+    if (!mesh || !glowMesh) {
+        return;
+    }
     
     material.uniforms.time.value = time;
     material.uniforms.morphSpeed.value = params.morphSpeed;
