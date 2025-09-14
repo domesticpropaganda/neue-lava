@@ -13,20 +13,31 @@ function initializeApp() {
 function startApp() {
 
 // Preloader utility functions
-function showPreloader(message = 'Loading image...') {
+function showPreloader(message = 'Loading...') {
     const preloader = document.getElementById('preloader');
     const preloaderText = document.querySelector('.preloader-text');
     
     if (preloader && preloaderText) {
         preloaderText.textContent = message;
         preloader.classList.remove('hidden');
+        
+        // Add a small delay to ensure smooth animation
+        requestAnimationFrame(() => {
+            preloader.style.opacity = '1';
+        });
     }
 }
 
 function hidePreloader() {
     const preloader = document.getElementById('preloader');
     if (preloader) {
-        preloader.classList.add('hidden');
+        // Fade out smoothly
+        preloader.style.opacity = '0';
+        
+        // Wait for animation to complete before hiding
+        setTimeout(() => {
+            preloader.classList.add('hidden');
+        }, 300);
     }
 }
 
@@ -195,7 +206,21 @@ setTimeout(() => {
 }, 10);
 
 // Load default mask texture
-const maskTexture = new THREE.TextureLoader().load('images/mask-1.png');
+showPreloader('Loading default mask...');
+const maskTexture = new THREE.TextureLoader().load('images/mask-1.png', 
+    // onLoad callback
+    (texture) => {
+        hidePreloader();
+        console.log('Default mask loaded successfully');
+    },
+    // onProgress callback
+    undefined,
+    // onError callback
+    (error) => {
+        console.error('Failed to load default mask:', error);
+        hidePreloader();
+    }
+);
 maskTexture.minFilter = THREE.LinearFilter;
 maskTexture.magFilter = THREE.LinearFilter;
 maskTexture.generateMipmaps = false; // Disable mipmaps for better edge quality
