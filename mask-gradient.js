@@ -1,15 +1,30 @@
 import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
 import { Pane } from 'https://cdn.skypack.dev/tweakpane@4.0.3';
 
+// Global app state for cleanup
+let appInstance = null;
+
 // Wait for modules to be available
 function initializeApp() {
     console.log('Modules loaded successfully');
     
+    // Clean up any existing instance before starting new one
+    if (appInstance) {
+        console.log('Cleaning up existing app instance...');
+        appInstance.cleanup();
+        appInstance = null;
+    }
+    
     // Start the main application
-    startApp();
+    appInstance = startApp();
 }
 
 function startApp() {
+
+// App state for cleanup
+let animationId = null;
+let eventListeners = [];
+let timeouts = [];
 
 // Preloader utility functions with improved error handling
 let preloaderState = {
@@ -17,6 +32,41 @@ let preloaderState = {
     timeoutId: null,
     forceHideTimeoutId: null
 };
+
+// Enhanced timeout management
+function safeSetTimeout(callback, delay) {
+    const id = setTimeout(callback, delay);
+    timeouts.push(id);
+    return id;
+}
+
+function clearAllTimeouts() {
+    timeouts.forEach(id => clearTimeout(id));
+    timeouts = [];
+    
+    // Clear preloader timeouts
+    if (preloaderState.timeoutId) {
+        clearTimeout(preloaderState.timeoutId);
+        preloaderState.timeoutId = null;
+    }
+    if (preloaderState.forceHideTimeoutId) {
+        clearTimeout(preloaderState.forceHideTimeoutId);
+        preloaderState.forceHideTimeoutId = null;
+    }
+}
+
+// Enhanced event listener management
+function safeAddEventListener(element, event, handler, options) {
+    element.addEventListener(event, handler, options);
+    eventListeners.push({ element, event, handler, options });
+}
+
+function removeAllEventListeners() {
+    eventListeners.forEach(({ element, event, handler, options }) => {
+        element.removeEventListener(event, handler, options);
+    });
+    eventListeners = [];
+}
 
 function showPreloader(message = 'Loading...') {
     const preloader = document.getElementById('preloader');
@@ -37,7 +87,7 @@ function showPreloader(message = 'Loading...') {
         preloaderState.isVisible = true;
         
         // Force hide after 10 seconds as failsafe
-        preloaderState.forceHideTimeoutId = setTimeout(() => {
+        preloaderState.forceHideTimeoutId = safeSetTimeout(() => {
             console.warn('Preloader force-hidden after timeout');
             hidePreloader();
         }, 10000);
@@ -61,7 +111,7 @@ function hidePreloader() {
         preloader.style.opacity = '0';
         
         // Set timeout for adding hidden class
-        preloaderState.timeoutId = setTimeout(() => {
+        preloaderState.timeoutId = safeSetTimeout(() => {
             preloader.classList.add('hidden');
             preloaderState.isVisible = false;
             console.log('Preloader hidden');
@@ -79,20 +129,26 @@ let mouse = { x: 0, y: 0 }; // Mouse position for camera rotation
 
 function setupFileUpload() {
     const fileInput = document.getElementById('mask-upload');
+    
+    // Safety check for file input element
+    if (!fileInput) {
+        console.error('File input element not found');
+        return;
+    }
 
     // File input change
-    fileInput.addEventListener('change', (e) => {
+    safeAddEventListener(fileInput, 'change', (e) => {
         if (e.target.files.length > 0) {
             handleFile(e.target.files[0]);
         }
     });
 
     // Drag and drop functionality on the whole document
-    document.addEventListener('dragover', (e) => {
+    safeAddEventListener(document, 'dragover', (e) => {
         e.preventDefault();
     });
 
-    document.addEventListener('drop', (e) => {
+    safeAddEventListener(document, 'drop', (e) => {
         e.preventDefault();
         if (e.dataTransfer.files.length > 0) {
             handleFile(e.dataTransfer.files[0]);
@@ -120,7 +176,7 @@ function setupFileUpload() {
         const reader = new FileReader();
         
         // Add timeout for file reading
-        const readTimeout = setTimeout(() => {
+        const readTimeout = safeSetTimeout(() => {
             console.error('File reading timed out');
             hidePreloader();
         }, 5000);
@@ -132,7 +188,7 @@ function setupFileUpload() {
             const img = new Image();
             
             // Add timeout for image loading
-            const imgTimeout = setTimeout(() => {
+            const imgTimeout = safeSetTimeout(() => {
                 console.error('Image loading timed out');
                 hidePreloader();
             }, 5000);
@@ -193,7 +249,7 @@ function setupFileUpload() {
 
 function setupMouseTracking() {
     // Track mouse position for subtle camera rotation
-    window.addEventListener('mousemove', (event) => {
+    safeAddEventListener(window, 'mousemove', (event) => {
         // Normalize mouse coordinates to [-1, 1] range
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -335,6 +391,12 @@ scene.background = new THREE.Color(0x000000); // Back to black for final effect
 // Get canvas container dimensions - use setTimeout to ensure DOM is ready
 const canvasContainer = document.querySelector('.canvas-container');
 
+// Safety check for canvas container
+if (!canvasContainer) {
+    console.error('Canvas container not found');
+    return null;
+}
+
 camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 2.5;
 
@@ -344,7 +406,7 @@ const renderer = new THREE.WebGLRenderer();
 canvasContainer.appendChild(renderer.domElement);
 
 // Set initial size after a brief delay to ensure layout is complete
-setTimeout(() => {
+safeSetTimeout(() => {
     const containerRect = canvasContainer.getBoundingClientRect();
     camera.aspect = containerRect.width / containerRect.height;
     camera.updateProjectionMatrix();
@@ -355,7 +417,7 @@ setTimeout(() => {
 showPreloader('Loading default mask...');
 
 // Add timeout for default mask loading
-const defaultMaskTimeout = setTimeout(() => {
+const defaultMaskTimeout = safeSetTimeout(() => {
     console.error('Timeout loading default mask');
     hidePreloader();
 }, 5000);
@@ -426,7 +488,7 @@ maskTexture.wrapT = THREE.ClampToEdgeWrapping;
 // Set initial current mask texture
 currentMaskTexture = maskTexture;
 
-// Track current mask index (1-5 for mask-1.png to mask-5.png)
+// Track current mask index (1-7 for mask-1.png to mask-7.png)
 let currentMaskIndex = 1;
 
 // Color themes based on the provided images
@@ -494,7 +556,7 @@ function loadMaskByIndex(index) {
     const loader = new THREE.TextureLoader();
     
     // Add timeout for mask loading
-    const loadTimeout = setTimeout(() => {
+    const loadTimeout = safeSetTimeout(() => {
         console.error(`Timeout loading mask-${index}.png`);
         hidePreloader();
     }, 5000);
@@ -597,11 +659,11 @@ const params = {
     },
     // Mask navigation parameters
     previousMask: function() {
-        const newIndex = currentMaskIndex === 1 ? 5 : currentMaskIndex - 1;
+        const newIndex = currentMaskIndex === 1 ? 7 : currentMaskIndex - 1;
         loadMaskByIndex(newIndex);
     },
     nextMask: function() {
-        const newIndex = currentMaskIndex === 5 ? 1 : currentMaskIndex + 1;
+        const newIndex = currentMaskIndex === 7 ? 1 : currentMaskIndex + 1;
         loadMaskByIndex(newIndex);
     }
 };
@@ -659,10 +721,10 @@ navButton.element.addEventListener('click', (event) => {
     let newIndex;
     if (clickPosition < 0.5) {
         // Previous (left half)
-        newIndex = currentMaskIndex === 1 ? 5 : currentMaskIndex - 1;
+        newIndex = currentMaskIndex === 1 ? 7 : currentMaskIndex - 1;
     } else {
         // Next (right half)
-        newIndex = currentMaskIndex === 5 ? 1 : currentMaskIndex + 1;
+        newIndex = currentMaskIndex === 7 ? 1 : currentMaskIndex + 1;
     }
     
     loadMaskByIndex(newIndex);
@@ -1414,7 +1476,7 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 scene.add(ambientLight);
 
 function animate() {
-    requestAnimationFrame(animate);
+    animationId = requestAnimationFrame(animate);
     const time = performance.now() * 0.001;
     
     // Update camera rotation based on mouse position
@@ -1498,8 +1560,10 @@ setupFileUpload();
 setupMouseTracking();
 
 // Handle window resize
-window.addEventListener('resize', () => {
+safeAddEventListener(window, 'resize', () => {
     const canvasContainer = document.querySelector('.canvas-container');
+    if (!canvasContainer) return;
+    
     const containerRect = canvasContainer.getBoundingClientRect();
     
     camera.aspect = containerRect.width / containerRect.height;
@@ -1509,8 +1573,10 @@ window.addEventListener('resize', () => {
 });
 
 // Initial resize to ensure proper sizing
-window.addEventListener('load', () => {
+safeAddEventListener(window, 'load', () => {
     const canvasContainer = document.querySelector('.canvas-container');
+    if (!canvasContainer) return;
+    
     const containerRect = canvasContainer.getBoundingClientRect();
     
     camera.aspect = containerRect.width / containerRect.height;
@@ -1518,6 +1584,110 @@ window.addEventListener('load', () => {
     
     renderer.setSize(containerRect.width, containerRect.height);
 });
+
+// Return cleanup object
+return {
+    cleanup: function() {
+        console.log('Cleaning up app resources...');
+        
+        // Stop animation loop
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+        
+        // Clear all timeouts
+        clearAllTimeouts();
+        
+        // Remove all event listeners
+        removeAllEventListeners();
+        
+        // Cleanup Three.js resources
+        if (scene) {
+            // Dispose of all meshes and their geometries/materials
+            scene.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(material => {
+                                if (material.map) material.map.dispose();
+                                material.dispose();
+                            });
+                        } else {
+                            if (child.material.map) child.material.map.dispose();
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+            
+            // Clear the scene
+            while(scene.children.length > 0) {
+                scene.remove(scene.children[0]);
+            }
+        }
+        
+        // Dispose of materials
+        if (material) {
+            // Dispose of material uniforms textures
+            Object.values(material.uniforms).forEach(uniform => {
+                if (uniform.value && uniform.value.dispose && typeof uniform.value.dispose === 'function') {
+                    uniform.value.dispose();
+                }
+            });
+            material.dispose();
+        }
+        
+        if (glowMaterial) {
+            // Dispose of glow material uniforms textures
+            Object.values(glowMaterial.uniforms).forEach(uniform => {
+                if (uniform.value && uniform.value.dispose && typeof uniform.value.dispose === 'function') {
+                    uniform.value.dispose();
+                }
+            });
+            glowMaterial.dispose();
+        }
+        
+        // Dispose of textures
+        if (currentMaskTexture) {
+            currentMaskTexture.dispose();
+        }
+        
+        // Dispose of renderer
+        if (renderer) {
+            renderer.dispose();
+            renderer.forceContextLoss();
+            
+            // Remove canvas from DOM
+            const canvas = renderer.domElement;
+            if (canvas && canvas.parentNode) {
+                canvas.parentNode.removeChild(canvas);
+            }
+        }
+        
+        // Cleanup GUI
+        if (pane) {
+            pane.dispose();
+        }
+        
+        // Reset global variables
+        mesh = null;
+        glowMesh = null;
+        camera = null;
+        currentMaskTexture = null;
+        mouse = { x: 0, y: 0 };
+        preloaderState = {
+            isVisible: false,
+            timeoutId: null,
+            forceHideTimeoutId: null
+        };
+        
+        console.log('App cleanup completed');
+    }
+};
 
 } // End of startApp function
 
@@ -1527,3 +1697,11 @@ if (document.readyState === 'loading') {
 } else {
     initializeApp();
 }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (appInstance) {
+        appInstance.cleanup();
+        appInstance = null;
+    }
+});
