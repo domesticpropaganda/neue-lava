@@ -307,18 +307,47 @@ function updateMaskTexture(newTexture) {
 }
 
 function updateMeshAspectRatio(aspectRatio) {
-    // Calculate new dimensions maintaining a max size of 3 units
-    const maxSize = 3;
+    // Get current viewport aspect ratio for responsive sizing
+    const canvasContainer = document.querySelector('.canvas-container');
+    if (!canvasContainer) return;
+    
+    const containerRect = canvasContainer.getBoundingClientRect();
+    const viewportAspectRatio = containerRect.width / containerRect.height;
+    
+    // Calculate dimensions based on both image and viewport aspect ratios
+    let maxSize = 3;
+    
+    // Adjust max size for mobile/narrow viewports
+    if (viewportAspectRatio < 1) {
+        // Portrait viewport - reduce size to prevent cropping
+        maxSize = 2.5;
+    } else if (viewportAspectRatio < 1.2) {
+        // Narrow landscape - slightly reduce size
+        maxSize = 2.8;
+    }
+    
     let width, height;
     
     if (aspectRatio >= 1) {
-        // Landscape or square - width is maxSize
+        // Landscape or square image
         width = maxSize;
         height = maxSize / aspectRatio;
+        
+        // Ensure image fits within viewport height on mobile
+        if (height > maxSize * 0.8 && viewportAspectRatio < 1) {
+            height = maxSize * 0.8;
+            width = height * aspectRatio;
+        }
     } else {
-        // Portrait - height is maxSize
+        // Portrait image
         height = maxSize;
         width = maxSize * aspectRatio;
+        
+        // Ensure image fits within viewport width on mobile
+        if (width > maxSize * 0.8 && viewportAspectRatio < 1) {
+            width = maxSize * 0.8;
+            height = width / aspectRatio;
+        }
     }
     
     // Create new geometries with calculated dimensions
@@ -398,7 +427,7 @@ if (!canvasContainer) {
 }
 
 camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 2.5;
+camera.position.z = 2.5
 
 const renderer = new THREE.WebGLRenderer();
 
@@ -650,6 +679,7 @@ const params = {
     noiseStrength: 0.1,
     glowNoise: 0.3,
     gradientSpeed: 0.05,
+    noiseType: 'Simplex',
     // Color theme selection
     colorTheme: 'Original',
     // Mask upload parameters
@@ -692,11 +722,11 @@ const colorsFolder = pane.addFolder({
 });
 
 const flowsFolder = pane.addFolder({
-    title: 'Shape the flows',
+    title: 'Position colors',
     expanded: false,
 });
 const animationFolder = pane.addFolder({
-    title: 'Adjust the stream',
+    title: 'Change movement',
     expanded: false,
 });
 // Visual folder (mask controls)
@@ -822,7 +852,7 @@ function addBranding(ctx, width, height) {
     ctx.font = `${smallFontSize}px 'Space Mono', monospace`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.textAlign = 'center';
-    ctx.fillText('A COLOR-FLOW TOY', width / 2, padding + fontSize + smallFontSize + 5);
+    ctx.fillText('BY STUDIØE', width / 2, padding + fontSize + smallFontSize + 5);
     
     // Color swatch - bottom center (above timestamp and copyright)
     const swatchSize = Math.floor(width * 0.025);
@@ -857,7 +887,7 @@ function addBranding(ctx, width, height) {
     ctx.font = `${smallFontSize}px 'Space Mono', monospace`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.textAlign = 'center';
-    ctx.fillText('©2025 STUDIØE', width / 2, height - padding);
+    ctx.fillText('©2025 OYGARERDAL.COM', width / 2, height - padding);
 }
 
 
@@ -875,31 +905,41 @@ colorsFolder.addBinding(params, 'colorTheme', {
 // Store controller references for updating
 window.guiControllers = {};
 window.guiControllers.colorBlue = colorsFolder.addBinding(params, 'colorBlue', {
-    label: 'Color 1',
-    color: {type: 'int'},
+    view: 'color',
+    alpha: false,
+    expanded: false,
+    label: 'Color 1'
 }).on('change', () => {
     // Update colorBlue2 to match colorBlue when it changes
     params.colorBlue2 = {r: params.colorBlue.r, g: params.colorBlue.g, b: params.colorBlue.b};
 });
 
 window.guiControllers.colorCyan = colorsFolder.addBinding(params, 'colorCyan', {
-    label: 'Color 2',
-    color: {type: 'int'},
+    view: 'color',
+    alpha: false,
+    expanded: false,
+    label: 'Color 2'
 });
 
 window.guiControllers.colorYellow = colorsFolder.addBinding(params, 'colorYellow', {
-    label: 'Color 3',
-    color: {type: 'int'},
+    view: 'color',
+    alpha: false,
+    expanded: false,
+    label: 'Color 3'
 });
 
 window.guiControllers.colorOrange = colorsFolder.addBinding(params, 'colorOrange', {
-    label: 'Color 4',
-    color: {type: 'int'},
+    view: 'color',
+    alpha: false,
+    expanded: false,
+    label: 'Color 4'
 });
 
 window.guiControllers.colorRed = colorsFolder.addBinding(params, 'colorRed', {
-    label: 'Color 5',
-    color: {type: 'int'},
+    view: 'color',
+    alpha: false,
+    expanded: false,
+    label: 'Color 5'
 });
 
 // Store flow controller references
@@ -907,35 +947,35 @@ window.flowControllers = {};
 
 // Flows folder
 window.flowControllers.blueStart = flowsFolder.addBinding(params, 'blueStart', {
-    label: 'Color 1 Start',
+    label: 'Color 1',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
 window.flowControllers.cyanTransition = flowsFolder.addBinding(params, 'cyanTransition', {
-    label: 'Clr 1→Clr 2',
+    label: 'Color 1→2',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
 window.flowControllers.yellowTransition = flowsFolder.addBinding(params, 'yellowTransition', {
-    label: 'Clr 2→Clr 3',
+    label: 'Color 2→3',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
 window.flowControllers.orangeTransition = flowsFolder.addBinding(params, 'orangeTransition', {
-    label: 'Clr 3→Clr 4',
+    label: 'Color 3→4',
     min: 0.0,
     max: 1.0,
     step: 0.01,
 });
 
 window.flowControllers.redEnd = flowsFolder.addBinding(params, 'redEnd', {
-    label: 'Clr 4→Clr 5',
+    label: 'Color 4→5',
     min: 0.0,
     max: 0.9,
     step: 0.01,
@@ -1007,14 +1047,22 @@ animationFolder.addBinding(params, 'noiseStrength', {
     step: 0.01,
 });
 
-// Take it with you folder (export controls)
+animationFolder.addBinding(params, 'noiseType', {
+    label: 'Type',
+    options: {
+        'Lava': 'Simplex',
+        'Smoke': 'fBm'
+    }
+});
+
+// Capture an image folder (export controls)
 const exportFolder = pane.addFolder({
-    title: 'Take it with you',
+    title: 'Capture images',
     expanded: false,
 });
 
 exportFolder.addButton({
-    title: 'Download',
+    title: 'Download a snapshot',
 }).on('click', () => {
     exportImage();
 });
@@ -1318,7 +1366,25 @@ const fragmentShader = `
         return 42.0 * dot( m*m*m, vec4( dot(p0,x0), dot(p1,x1),
                                         dot(p2,x2), dot(p3,x3) ) );
     }
+    
+    // Fractal Brownian Motion (fBm) noise
+    float fbm(vec3 p) {
+        float value = 0.0;
+        float amplitude = 0.5;
+        float frequency = 1.0;
+        
+        // 4 octaves for good detail without too much computation
+        for(int i = 0; i < 4; i++) {
+            value += amplitude * snoise(p * frequency);
+            amplitude *= 0.5;  // Each octave has half the amplitude
+            frequency *= 2.0;  // Each octave has double the frequency
+        }
+        
+        return value;
+    }
+    
     uniform float noiseStrength;
+    uniform int noiseType; // 0 = Simplex, 1 = fBm
     uniform vec3 colorBlue;
     uniform vec3 colorCyan;
     uniform vec3 colorYellow;
@@ -1391,7 +1457,14 @@ const fragmentShader = `
         float verticalOffset = mod(time * gradientSpeed, 1.0); // downward movement, speed controlled by uniform
         float gradientY = fract((vUv.y - verticalOffset) * gradientScale);
         
-        float noise = snoise(vec3(vUv * 3.0, time * 0.2));
+        // Select noise type based on uniform
+        float noise;
+        if (noiseType == 0) {
+            noise = snoise(vec3(vUv * 3.0, time * 0.2));
+        } else {
+            noise = fbm(vec3(vUv * 2.0, time * 0.15)); // Slightly different parameters for fBm
+        }
+        
         float t = mod(maskValue + animatedBand + gradientY + bandPosition + noise * noiseStrength, 1.0);
         t = smoothstep(0.0, 1.0, t);
         
@@ -1423,6 +1496,7 @@ const material = new THREE.ShaderMaterial({
         blueEnd2: { value: params.blueEnd2 },
     // ...existing code...
         noiseStrength: { value: params.noiseStrength },
+        noiseType: { value: params.noiseType === 'Simplex' ? 0 : 1 },
         gradientSpeed: { value: params.gradientSpeed }
     },
     transparent: true,
@@ -1541,6 +1615,7 @@ function animate() {
     material.uniforms.colorRed.value.setRGB(params.colorRed.r/255, params.colorRed.g/255, params.colorRed.b/255);
     material.uniforms.colorBlue2.value.setRGB(params.colorBlue2.r/255, params.colorBlue2.g/255, params.colorBlue2.b/255);
         material.uniforms.noiseStrength.value = params.noiseStrength;
+        material.uniforms.noiseType.value = params.noiseType === 'Simplex' ? 0 : 1;
         // ...existing code...
     material.uniforms.gradientSpeed.value = params.gradientSpeed;
     renderer.render(scene, camera);
@@ -1564,6 +1639,12 @@ safeAddEventListener(window, 'resize', () => {
     camera.updateProjectionMatrix();
     
     renderer.setSize(containerRect.width, containerRect.height);
+    
+    // Recalculate mesh size for new viewport dimensions
+    if (currentMaskTexture && currentMaskTexture.image) {
+        const aspectRatio = currentMaskTexture.image.width / currentMaskTexture.image.height;
+        updateMeshAspectRatio(aspectRatio);
+    }
 });
 
 // Initial resize to ensure proper sizing

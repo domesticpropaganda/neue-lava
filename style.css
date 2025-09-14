@@ -121,6 +121,28 @@ body {
   font-size: clamp(.6rem, 1.5vw, 11px) !important;
 }
 
+/* Hide only RGB text inputs, keep color swatches visible */
+.tp-dfwv .tp-coltxtv,
+.tp-dfwv .tp-colswv_t,
+.tp-dfwv .tp-coltxtv_m,
+.tp-dfwv .tp-coltxtv_ms,
+.tp-dfwv .tp-colv .tp-txtv,
+.tp-dfwv .tp-colv_t {
+  display: none !important;
+}
+
+/* Make color chips and clickable area wider */
+.tp-dfwv .tp-colswv_b {
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 24px !important;
+}
+
+/* Make the color container use full width */
+.tp-dfwv .tp-colv_c {
+  width: 100% !important;
+}
+
 .tp-btnv_b {
   background-color: #222 !important;
   border: 1px solid #444 !important;
