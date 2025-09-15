@@ -765,7 +765,7 @@ const uploadButton = visualFolder.addButton({
 });
 
 // Add tooltip to upload button
-uploadButton.element.setAttribute('data-tooltip', 'Black&white images with solid black background work best.(JPG, PNG, max 10MB)');
+uploadButton.element.setAttribute('data-tooltip', 'Use a depthmap or a black & white image with solid black background.');
 uploadButton.element.classList.add('has-tooltip');
 
 uploadButton.on('click', () => {
