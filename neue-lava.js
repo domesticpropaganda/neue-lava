@@ -764,9 +764,50 @@ const uploadButton = visualFolder.addButton({
     title: 'Upload',
 });
 
-// Add tooltip to upload button
-uploadButton.element.setAttribute('data-tooltip', 'Use a depthmap or a black & white image with solid black background.');
-uploadButton.element.classList.add('has-tooltip');
+// Create custom tooltip with HTML content for upload button
+function createTooltip(element, content) {
+    let tooltip = null;
+    
+    function showTooltip() {
+        // Remove any existing tooltip
+        hideTooltip();
+        
+        tooltip = document.createElement('div');
+        tooltip.className = 'tooltip-container';
+        tooltip.innerHTML = content;
+        
+        // Append to the element wrapper, not the button itself
+        element.appendChild(tooltip);
+        
+        // Small delay to trigger animation
+        setTimeout(() => {
+            tooltip.classList.add('visible');
+        }, 10);
+    }
+    
+    function hideTooltip() {
+        if (tooltip) {
+            tooltip.classList.remove('visible');
+            setTimeout(() => {
+                if (tooltip && tooltip.parentNode) {
+                    tooltip.parentNode.removeChild(tooltip);
+                }
+                tooltip = null;
+            }, 200);
+        }
+    }
+    
+    element.addEventListener('mouseenter', showTooltip);
+    element.addEventListener('mouseleave', hideTooltip);
+    
+    return { showTooltip, hideTooltip };
+}
+
+// Add tooltip with link to upload button
+uploadButton.element.style.position = 'relative'; // Ensure positioning context
+createTooltip(uploadButton.element, 
+    'Use a depthmap or a greyscale image with solid black background.<br><a href="https://domesticpropaganda.github.io/neue-lava/images/mask-1.png" target="_blank">See an example</a>'
+);
 
 uploadButton.on('click', () => {
     document.getElementById('mask-upload').click();
