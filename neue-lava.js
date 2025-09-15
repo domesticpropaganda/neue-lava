@@ -549,6 +549,27 @@ const colorThemes = {
         colorYellow: [217, 230, 173],
         colorOrange: [255, 225, 0],
         colorRed: [245, 60, 35]
+    },
+    'Chrome': {
+        colorBlue: [10, 10, 25],
+        colorCyan: [180, 180, 200],
+        colorYellow: [255, 255, 255],
+        colorOrange: [220, 220, 240],
+        colorRed: [147, 143, 135]
+    },
+    'Synthwave': {
+        colorBlue: [20, 0, 40],
+        colorCyan: [255, 0, 128],
+        colorYellow: [0, 255, 255],
+        colorOrange: [0, 100, 255],
+        colorRed: [0, 255, 100]
+    },
+    'Infrared': {
+        colorBlue: [0, 0, 0],
+        colorCyan: [80, 0, 0],
+        colorYellow: [255, 0, 0],
+        colorOrange: [255, 165, 0],
+        colorRed: [255, 255, 255]
     }
   
 };
