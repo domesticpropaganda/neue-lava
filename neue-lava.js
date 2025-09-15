@@ -127,6 +127,10 @@ let mesh, glowMesh; // Store mesh references for updating geometry
 let camera; // Store camera reference
 let mouse = { x: 0, y: 0 }; // Mouse position for camera rotation
 
+// Heat burst system
+let heatBursts = [];
+const MAX_HEAT_BURSTS = 5; // Maximum number of simultaneous bursts
+
 function setupFileUpload() {
     const fileInput = document.getElementById('mask-upload');
     
@@ -254,6 +258,63 @@ function setupMouseTracking() {
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     });
+    
+    // Add click handler for heat bursts
+    safeAddEventListener(window, 'click', (event) => {
+        // Only trigger on canvas area clicks, not GUI clicks
+        const canvasContainer = document.querySelector('.canvas-container');
+        if (canvasContainer && canvasContainer.contains(event.target)) {
+            addHeatBurst(event.clientX, event.clientY);
+        }
+    });
+}
+
+function addHeatBurst(screenX, screenY) {
+    // Convert screen coordinates to normalized coordinates
+    const rect = renderer.domElement.getBoundingClientRect();
+    const x = ((screenX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((screenY - rect.top) / rect.height) * 2 - 1);
+    
+    // Create new heat burst
+    const burst = {
+        x: (x + 1) * 0.5, // Convert to 0-1 range for UV coordinates
+        y: (y + 1) * 0.5, // Convert to 0-1 range for UV coordinates
+        intensity: 1.0,
+        radius: 0.0,
+        maxRadius: 0.4 + Math.random() * 0.3, // Larger max radius for bounce effect
+        speed: 0.008 + Math.random() * 0.006, // Slower expansion speed
+        decay: 0.012 + Math.random() * 0.008, // Slower decay for longer effect
+        startTime: performance.now() * 0.001
+    };
+    
+    // Add to burst array
+    heatBursts.push(burst);
+    
+    // Remove oldest burst if we exceed maximum
+    if (heatBursts.length > MAX_HEAT_BURSTS) {
+        heatBursts.shift();
+    }
+    
+    console.log(`Heat burst added at (${burst.x.toFixed(2)}, ${burst.y.toFixed(2)})`);
+}
+
+function updateHeatBursts(currentTime) {
+    // Update all active heat bursts
+    for (let i = heatBursts.length - 1; i >= 0; i--) {
+        const burst = heatBursts[i];
+        const age = currentTime - burst.startTime;
+        
+        // Expand the radius
+        burst.radius = Math.min(burst.radius + burst.speed, burst.maxRadius);
+        
+        // Decay the intensity
+        burst.intensity = Math.max(0, burst.intensity - burst.decay);
+        
+        // Remove burst if it's fully decayed or too old (extended time for bounce effect)
+        if (burst.intensity <= 0 || age > 8.0) {
+            heatBursts.splice(i, 1);
+        }
+    }
 }
 
 function updateCameraRotation() {
@@ -782,7 +843,7 @@ navButton.element.addEventListener('click', (event) => {
 });
 
 const uploadButton = visualFolder.addButton({
-    title: 'Upload',
+    title: 'Upload image',
 });
 
 // Create custom tooltip with HTML content for upload button
@@ -1459,6 +1520,10 @@ const fragmentShader = `
     uniform float orangeTransition;
     uniform float redEnd;
     uniform float blueEnd2;
+    // Heat burst uniforms
+    uniform int heatBurstCount;
+    uniform float heatBurstPositions[10]; // 5 bursts * 2 coordinates
+    uniform float heatBurstData[15]; // 5 bursts * 3 values (intensity, radius, maxRadius)
     vec3 thermalPalette(float t) {
         t = fract(t); // wrap t to [0,1)
         // Color stops and positions
@@ -1530,6 +1595,54 @@ const fragmentShader = `
         float t = mod(maskValue + animatedBand + gradientY + bandPosition + noise * noiseStrength, 1.0);
         t = smoothstep(0.0, 1.0, t);
         
+        // Add heat burst effects
+        float heatBurstEffect = 0.0;
+        for (int i = 0; i < 5; i++) { // Max 5 heat bursts
+            if (i >= heatBurstCount) break;
+            
+            // Get burst data
+            vec2 burstPos = vec2(heatBurstPositions[i * 2], heatBurstPositions[i * 2 + 1]);
+            float intensity = heatBurstData[i * 3];
+            float radius = heatBurstData[i * 3 + 1];
+            float maxRadius = heatBurstData[i * 3 + 2];
+            
+            // Calculate distance from current pixel to burst center (clean circles)
+            float distance = length(vUv - burstPos);
+            
+            // Create ripple effect with bounce-back
+            if (distance <= maxRadius && intensity > 0.0) {
+                // Smooth falloff from center
+                float falloff = 1.0 - smoothstep(0.0, maxRadius, distance);
+                
+                // Slower ripple waves with bounce-back effect
+                float waveSpeed = 3.0;
+                float waveFreq = 15.0;
+                
+                // Primary wave expanding outward
+                float primaryWave = sin(distance * waveFreq - time * waveSpeed) * 0.5 + 0.5;
+                
+                // Secondary bounced wave (inverted phase, delayed, and weaker)
+                float bounceDelay = 2.0;
+                float bounceWave = sin(distance * waveFreq + (time - bounceDelay) * waveSpeed) * 0.3 + 0.5;
+                
+                // Combine waves with bounce effect that weakens over time
+                float bounceStrength = intensity * 0.4 * max(0.0, 1.0 - (time - bounceDelay) / 3.0);
+                float combinedWave = primaryWave + bounceWave * bounceStrength;
+                
+                // Apply distance-based falloff and intensity decay
+                float burstStrength = intensity * falloff * combinedWave * 0.6;
+                
+                // Additional smooth edge transition
+                float edgeFade = 1.0 - smoothstep(radius * 0.8, radius, distance);
+                burstStrength *= edgeFade;
+                
+                heatBurstEffect += burstStrength;
+            }
+        }
+        
+        // Apply heat burst to gradient
+        t = mod(t + heatBurstEffect, 1.0);
+        
         vec3 color = thermalPalette(t);
         gl_FragColor = vec4(color, mask);
     }
@@ -1559,7 +1672,11 @@ const material = new THREE.ShaderMaterial({
     // ...existing code...
         noiseStrength: { value: params.noiseStrength },
         noiseType: { value: params.noiseType === 'Simplex' ? 0 : 1 },
-        gradientSpeed: { value: params.gradientSpeed }
+        gradientSpeed: { value: params.gradientSpeed },
+        // Heat burst uniforms
+        heatBurstCount: { value: 0 },
+        heatBurstPositions: { value: new Float32Array(MAX_HEAT_BURSTS * 2) }, // x,y pairs
+        heatBurstData: { value: new Float32Array(MAX_HEAT_BURSTS * 3) } // intensity, radius, maxRadius triplets
     },
     transparent: true,
     depthWrite: false,
@@ -1612,6 +1729,9 @@ function animate() {
     // Update camera rotation based on mouse position
     updateCameraRotation();
     
+    // Update heat bursts
+    updateHeatBursts(time);
+    
     // Only proceed with rendering if meshes are created
     if (!mesh || !glowMesh) {
         return;
@@ -1621,6 +1741,31 @@ function animate() {
     material.uniforms.morphSpeed.value = params.morphSpeed;
     material.uniforms.bandPosition.value = params.bandPosition;
     material.uniforms.gradientScale.value = params.gradientScale;
+    
+    // Update heat burst uniforms
+    material.uniforms.heatBurstCount.value = heatBursts.length;
+    
+    // Update positions and data arrays
+    const positions = material.uniforms.heatBurstPositions.value;
+    const data = material.uniforms.heatBurstData.value;
+    
+    for (let i = 0; i < MAX_HEAT_BURSTS; i++) {
+        if (i < heatBursts.length) {
+            const burst = heatBursts[i];
+            positions[i * 2] = burst.x;
+            positions[i * 2 + 1] = burst.y;
+            data[i * 3] = burst.intensity;
+            data[i * 3 + 1] = burst.radius;
+            data[i * 3 + 2] = burst.maxRadius;
+        } else {
+            // Clear unused slots
+            positions[i * 2] = 0;
+            positions[i * 2 + 1] = 0;
+            data[i * 3] = 0;
+            data[i * 3 + 1] = 0;
+            data[i * 3 + 2] = 0;
+        }
+    }
     
     // Update glow
     glowMaterial.uniforms.time.value = time;
@@ -1816,6 +1961,7 @@ return {
         camera = null;
         currentMaskTexture = null;
         mouse = { x: 0, y: 0 };
+        heatBursts = []; // Clear heat bursts
         preloaderState = {
             isVisible: false,
             timeoutId: null,
